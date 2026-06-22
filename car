@@ -1,0 +1,148 @@
+import pygame
+import math
+import sys
+
+pygame.init()
+
+WIDTH, HEIGHT = 1200, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Zombie Road Prototype")
+
+clock = pygame.time.Clock()
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (60, 180, 75)
+BLUE = (100, 170, 255)
+GRAY = (100, 100, 100)
+YELLOW = (255, 220, 0)
+
+font = pygame.font.SysFont(None, 36)
+
+GROUND_BASE = 500
+
+
+def terrain_height(x):
+    return GROUND_BASE + math.sin(x * 0.01) * 50 + math.sin(x * 0.03) * 15
+
+
+class Car:
+    def __init__(self):
+        self.x = 100
+        self.y = terrain_height(self.x) - 30
+        self.vx = 0
+        self.vy = 0
+        self.angle = 0
+
+        self.fuel = 100
+        self.money = 0
+
+    def update(self, keys):
+        if self.fuel > 0:
+            if keys[pygame.K_RIGHT]:
+                self.vx += 0.25
+                self.fuel -= 0.03
+
+            if keys[pygame.K_LEFT]:
+                self.vx -= 0.15
+                self.fuel -= 0.02
+
+        self.vy += 0.4
+
+        self.x += self.vx
+        self.y += self.vy
+
+        ground_y = terrain_height(self.x) - 30
+
+        if self.y > ground_y:
+            self.y = ground_y
+            self.vy = 0
+
+        self.vx *= 0.992
+
+        self.money = int(self.x / 10)
+
+    def draw(self, surface, camera_x):
+        draw_x = self.x - camera_x
+
+        pygame.draw.rect(
+            surface,
+            GRAY,
+            (draw_x - 40, self.y - 20, 80, 30)
+        )
+
+        pygame.draw.circle(
+            surface,
+            BLACK,
+            (int(draw_x - 25), int(self.y + 10)),
+            15
+        )
+
+        pygame.draw.circle(
+            surface,
+            BLACK,
+            (int(draw_x + 25), int(self.y + 10)),
+            15
+        )
+
+
+car = Car()
+
+running = True
+
+while running:
+    dt = clock.tick(60)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+
+    car.update(keys)
+
+    camera_x = car.x - WIDTH * 0.3
+
+    screen.fill(BLUE)
+
+    points = []
+
+    for sx in range(-50, WIDTH + 50, 10):
+        world_x = sx + camera_x
+        y = terrain_height(world_x)
+
+        points.append((sx, y))
+
+    points.append((WIDTH + 50, HEIGHT))
+    points.append((-50, HEIGHT))
+
+    pygame.draw.polygon(screen, GREEN, points)
+
+    car.draw(screen, camera_x)
+
+    fuel_text = font.render(
+        f"Fuel: {int(car.fuel)}",
+        True,
+        WHITE
+    )
+
+    money_text = font.render(
+        f"Money: ${car.money}",
+        True,
+        YELLOW
+    )
+
+    dist_text = font.render(
+        f"Distance: {int(car.x)}m",
+        True,
+        WHITE
+    )
+
+    screen.blit(fuel_text, (20, 20))
+    screen.blit(money_text, (20, 60))
+    screen.blit(dist_text, (20, 100))
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
